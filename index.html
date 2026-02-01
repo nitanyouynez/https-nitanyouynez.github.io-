@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>高中生科学专注记忆力训练</title>
+
+<style>
+body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background: #ffffff;
+    text-align: center;
+}
+h1 { margin: 20px 0; }
+
+.menu {
+    display: grid;
+    grid-template-columns: repeat(3, 160px);
+    gap: 15px;
+    justify-content: center;
+}
+
+button {
+    padding: 14px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+#game {
+    margin-top: 30px;
+    min-height: 240px;
+}
+
+input {
+    padding: 8px;
+    font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>高中生科学专注记忆力训练</h1>
+
+<div class="menu">
+    <button onclick="reaction()">反应速度</button>
+    <button onclick="math()">算数训练</button>
+    <button onclick="digitMemory()">数字记忆</button>
+    <button onclick="schulte()">舒尔特方格</button>
+    <button onclick="history()">训练记录</button>
+</div>
+
+<div id="game"></div>
+
+<script>
+const game = document.getElementById("game");
+
+/* ===== 数据记录 ===== */
+function save(type, value) {
+    let data = JSON.parse(localStorage.getItem("records") || "{}");
+    data[type] = value;
+    localStorage.setItem("records", JSON.stringify(data));
+}
+
+/* ===== 1. 反应速度 ===== */
+function reaction() {
+    game.innerHTML = "<p>红点消失后，立即点击页面</p>";
+    const dot = document.createElement("div");
+    dot.style.width = "80px";
+    dot.style.height = "80px";
+    dot.style.background = "red";
+    dot.style.borderRadius = "50%";
+    dot.style.margin = "30px auto";
+    game.appendChild(dot);
+
+    let start = 0;
+    let ready = false;
+
+    setTimeout(() => {
+        dot.style.display = "none";
+        start = Date.now();
+        ready = true;
+    }, Math.random() * 2000 + 1000);
+
+    document.onclick = () => {
+        if (!ready) return;
+        const t = Date.now() - start;
+        save("反应速度", t + " ms");
+        game.innerHTML = `反应时间：<b>${t} ms</b>`;
+        document.onclick = null;
+    };
+}
+
+/* ===== 2. 算数训练 ===== */
+function math() {
+    let correct = 0, total = 0, time = 60;
+    game.innerHTML = `
+        <p id="timer">60 秒</p>
+        <p id="q"></p>
+        <input id="a">
+        <button id="ok">确定</button>
+    `;
+
+    const q = document.getElementById("q");
+    const a = document.getElementById("a");
+    const ok = document.getElementById("ok");
+    let answer = 0;
+
+    function next() {
+        const x = Math.floor(Math.random()*90+10);
+        const y = Math.floor(Math.random()*9+1);
+        const op = ["+","-","×"][Math.floor(Math.random()*3)];
+        answer = op==="+"?x+y:op==="-"?x-y:x*y;
+        q.textContent = `${x} ${op} ${y}`;
+        a.value="";
+        a.focus();
+    }
+
+    ok.onclick = () => {
+        total++;
+        if(Number(a.value)===answer) correct++;
+        next();
+    };
+
+    next();
+
+    const timer = setInterval(()=>{
+        time--;
+        document.getElementById("timer").textContent = time+" 秒";
+        if(time===0){
+            clearInterval(timer);
+            save("算数训练", `${correct}/${total}`);
+            game.innerHTML = `正确：${correct} / ${total}`;
+        }
+    },1000);
+}
+
+/* ===== 3. 数字记忆 ===== */
+function digitMemory() {
+    let level = 3;
+    game.innerHTML = "<p>记住数字</p>";
+
+    function round() {
+        const num = Array.from({length: level}, () => Math.floor(Math.random()*10)).join("");
+        game.innerHTML = `<div style="font-size:32px;margin:20px">${num}</div>`;
+
+        setTimeout(() => {
+            game.innerHTML = `
+                <p>请输入刚才的数字</p>
+                <input id="inp">
+                <button id="ok">确认</button>
+            `;
+            const inp = document.getElementById("inp");
+            inp.focus();
+            document.getElementById("ok").onclick = () => {
+                if (inp.value === num) {
+                    level++;
+                    round();
+                } else {
+                    save("数字记忆", level + " 位");
+                    game.innerHTML = `最高记忆：<b>${level} 位</b>`;
+                }
+            };
+        }, 2000);
+    }
+    round();
+}
+
+/* ===== 4. 舒尔特 ===== */
+function schulte() {
+    game.innerHTML="<p>按 1 → 16 顺序点击</p>";
+    const grid=document.createElement("div");
+    grid.style.display="grid";
+    grid.style.gridTemplateColumns="repeat(4,60px)";
+    grid.style.gap="10px";
+    grid.style.justifyContent="center";
+    game.appendChild(grid);
+
+    let nums=[...Array(16).keys()].map(i=>i+1).sort(()=>Math.random()-0.5);
+    let cur=1,start=Date.now();
+
+    nums.forEach(n=>{
+        const c=document.createElement("div");
+        c.style.width="60px";
+        c.style.height="60px";
+        c.style.background="#eee";
+        c.style.lineHeight="60px";
+        c.style.cursor="pointer";
+        c.textContent=n;
+        c.onclick=()=>{
+            if(n===cur){
+                c.style.background="#ccc";
+                cur++;
+                if(cur>16){
+                    const t=Math.round((Date.now()-start)/1000);
+                    save("舒尔特方格", t + " 秒");
+                    game.innerHTML=`完成时间：<b>${t} 秒</b>`;
+                }
+            }
+        };
+        grid.appendChild(c);
+    });
+}
+
+/* ===== 5. 训练记录 ===== */
+function history() {
+    const data = JSON.parse(localStorage.getItem("records") || "{}");
+    let html = "<h3>训练记录</h3>";
+    if (Object.keys(data).length === 0) {
+        html += "<p>暂无记录</p>";
+    } else {
+        for (let k in data) {
+            html += `<p>${k}：${data[k]}</p>`;
+        }
+    }
+    game.innerHTML = html;
+}
+</script>
+
+</body>
+</html>
